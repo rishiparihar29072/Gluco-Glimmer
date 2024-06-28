@@ -1,0 +1,111 @@
+#include <Wire.h>
+#include <U8glib.h>
+// Initialize the OLED display with the SSD1306 controller
+U8GLIB_SSD1306_128X64 u8g(U8G_I2C_OPT_NONE); // I2C / TWI 
+const int soil = 0; // Pin to read soil sensor (simulated glucose sensor)
+int ir1state = 0; // Variable to store raw sensor reading
+int ir2state = 0; // Variable to store processed sensor reading
+int vout = 0; // Variable to store voltage output calculation
+int xout = 0; // Variable to store intermediate calculation
+int yout = 0; // Variable to store intermediate calculation
+int zout = 0; // Variable to store final calculated value
+int a = 0; // General purpose variable
+void setup() {
+ Serial.begin(9600); // Initialize serial communication at 9600 baud
+
+ pinMode(soil, INPUT); // Set the soil pin as an input to read sensor values
+ 
+ // Display welcome message
+ u8g.firstPage(); 
+ do {
+ u8g.setFont(u8g_font_6x10); // Set smaller font for display
+ u8g.drawStr(10, 10, "Welcome to"); // Display message with gap from border
+ u8g.drawStr(10, 20, "Glucose Monitoring");
+ u8g.drawStr(10, 30, "System by ");
+ u8g.drawStr(10, 40, "Anuj Tiwari");
+ u8g.drawStr(10, 50, "Guided by Abhay ");
+ u8g.drawStr(10, 60, "Kumar Tripathi");
+ } while (u8g.nextPage());
+ delay(3000); // Wait for 3 seconds
+ // Display second page
+ u8g.firstPage(); 
+ do {
+ u8g.setFont(u8g_font_6x10); // Set smaller font for display
+ u8g.drawStr(10, 10, "Team Details:");
+
+ u8g.drawStr(10, 20, "Anuj Tiwari");
+ u8g.drawStr(10, 30, "Nidhi Gupta");
+ u8g.drawStr(10, 40, "Rishi Parihar");
+ u8g.drawStr(10, 50, "Anubhav Singh");
+ } while (u8g.nextPage());
+ delay(3000); // Wait for 3 seconds
+ // Clear screen
+ u8g.firstPage();
+ do {
+ // Do nothing, just clear the screen
+ } while (u8g.nextPage());
+ delay(1000); // Wait for 1 second
+}
+void loop() {
+ ir1state = analogRead(soil); // Read raw sensor value
+ Serial.println("ir1state: " + String(ir1state)); // Print raw sensor value to serial monitor
+ 
+ // Perform calculations on sensor value
+ ir2state = (8 * 10^-5) * ir1state^2; // Calculate processed sensor value
+ Serial.println("ir2state: " + String(ir2state)); // Print processed sensor value to serial monitor
+ 
+ xout = 0.1873 * ir1state; // Perform intermediate calculation
+ Serial.println("xout: " + String(xout)); // Print intermediate calculation to serial monitor
+ 
+ yout = ir2state + xout + 46.131; // Perform further calculation
+ Serial.println("yout: " + String(yout)); // Print further calculation to serial monitor
+ 
+ vout = yout * (-1); // Calculate voltage output
+ Serial.println("vout: " + String(vout)); // Print voltage output to serial monitor
+ 
+ zout = (vout / 100) * 5; // Perform final calculation for glucose level
+ Serial.println("zout: " + String(zout)); // Print final glucose level to serial monitor
+ 
+ // Display glucose level to OLED display
+ u8g.firstPage(); 
+ do {
+ if ((ir1state <= 300) && (ir1state >= 20)) {
+ u8g.setFont(u8g_font_6x10); // Set smaller font for display
+
+ u8g.drawStr(10, 10, "Scanning finger..."); // Display scanning message
+ delay(2000); // Wait for 2 seconds
+ u8g.firstPage(); 
+ do {
+ char buf[10];
+ sprintf(buf, "%d", zout); // Convert integer to string for display
+ u8g.setFont(u8g_font_6x10); // Set smaller font for display
+ u8g.drawStr(10, 10, "GLUCOSE in mg/dl:"); // Display glucose label
+ u8g.drawStr(10, 20, buf); // Display glucose level
+ if (zout > 180) {
+ u8g.drawStr(10, 30, "Your energy levels are good"); // Display energy level message
+ }
+ u8g.drawStr(10, 40, "Please remove finger"); // Display instruction to remove finger
+ } while (u8g.nextPage());
+ delay(5000); // Wait for 5 seconds
+ // Display 10-second countdown message
+ for (int i = 10; i > 0; i--) {
+ u8g.firstPage(); 
+ do {
+
+ char buf[10];
+ sprintf(buf, "%d", i); // Convert integer to string for countdown
+ u8g.setFont(u8g_font_6x10); // Set smaller font for display
+ u8g.drawStr(10, 10, "Next check in:"); // Display countdown label
+ u8g.drawStr(10, 20, buf); // Display countdown value
+ u8g.drawStr(10, 30, "seconds"); // Display "seconds" label
+ } while (u8g.nextPage());
+ delay(1000); // Wait for 1 second
+ }
+ } else {
+ u8g.setFont(u8g_font_6x10); // Set smaller font for display
+ u8g.drawStr(10, 10, "READY FOR TEST"); // Display ready message
+ u8g.drawStr(10, 20, "PUT YOUR FINGER"); // Display instruction to put finger
+ delay(500); // Wait for 0.5 seconds
+ } 
+ } while (u8g.nextPage());
+}
